@@ -38,12 +38,12 @@ class KissflowApi {
         rowIterator.next();
         while (rowIterator.hasNext()) {
             Row row = rowIterator.next();
-            String[] split = row.getCell(9).getStringCellValue().split("/");
+            String[] split = row.getCell(7).getStringCellValue().split("/");
 
             Map<String,String> body = new HashMap<>();
 
             body.put("Departmental_shortlist", URLEncoder.encode(row.getCell(0).getStringCellValue(), "UTF-8"));
-            body.put("Directorate_shortlist", URLEncoder.encode(Integer.valueOf((int) row.getCell(1).getNumericCellValue()).toString(), "UTF-8"));
+            body.put("Directorate_shortlist", URLEncoder.encode(Integer.valueOf(Integer.parseInt(row.getCell(1).getStringCellValue())).toString(), "UTF-8"));
             body.put("Round", URLEncoder.encode(row.getCell(2).getStringCellValue(), "UTF-8"));
             body.put("Proposed_Award", URLEncoder.encode(row.getCell(3).getStringCellValue(), "UTF-8"));
             body.put("Proposed_Committee", URLEncoder.encode(row.getCell(4).getStringCellValue(), "UTF-8"));
@@ -63,8 +63,8 @@ class KissflowApi {
             &&  Objects.equals(sheet.getRow(0).getCell(1).getStringCellValue(), "Directorate rank")
             &&  Objects.equals(sheet.getRow(0).getCell(2).getStringCellValue(), "Round")
             &&  Objects.equals(sheet.getRow(0).getCell(3).getStringCellValue(), "Proposed award")
-            &&  Objects.equals(sheet.getRow(0).getCell(5).getStringCellValue(), "Proposed committee")
-            &&  Objects.equals(sheet.getRow(0).getCell(7).getStringCellValue(), "Proposed category");
+            &&  Objects.equals(sheet.getRow(0).getCell(4).getStringCellValue(), "Proposed committee")
+            &&  Objects.equals(sheet.getRow(0).getCell(5).getStringCellValue(), "Proposed category");
 
         if (!goodFormat) {
             throw new UnsupportedOperationException("Wrong table format: Columns should be Departmental rank, Directorate rank, Round, Proposed award, Proposed committee, Proposed category");
@@ -108,7 +108,7 @@ class KissflowApi {
         while(cellIterator.hasNext()) cellIterator.next().setCellStyle(headerStyle);
 
         XSSFCellStyle depStyle = wb.createCellStyle();
-        depStyle.setFillForegroundColor(new XSSFColor(new Color(255, 192, 109)));
+        depStyle.setFillForegroundColor(new XSSFColor(new Color(249, 203, 156)));
         depStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         XSSFCellStyle dirStyle = wb.createCellStyle();
         dirStyle.setFillForegroundColor(new XSSFColor(new Color(200, 231, 247)));
@@ -122,7 +122,7 @@ class KissflowApi {
 
             XSSFRow thisRow = appendRow(sheet, currentRow, Arrays.asList(
                     (String) item.getOrDefault("Departmental_shortlist", ""),
-                    Integer.valueOf((int) item.getOrDefault("Directorate_shortlist", 0)).toString(),
+                    Integer.valueOf(Double.valueOf((double) item.getOrDefault("Directorate_shortlist", 0.0)).intValue()).toString(),
                     (String) item.getOrDefault("Round", ""),
                     (String) item.getOrDefault("Proposed_Award", ""),
                     (String) item.getOrDefault("Proposed_Committee", ""),
@@ -206,7 +206,8 @@ class KissflowApi {
         headerFont.setBold(true);
         headerFont.setColor(IndexedColors.WHITE.getIndex());
         headerStyle.setFont(headerFont);
-        headerStyle.setFillBackgroundColor(new XSSFColor(new Color(25, 129, 183)));
+        headerStyle.setFillForegroundColor(new XSSFColor(new Color(25, 129, 183)));
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         Iterator<Cell> cellIterator = header.cellIterator();
         while(cellIterator.hasNext()) cellIterator.next().setCellStyle(headerStyle);
 
@@ -238,8 +239,9 @@ class KissflowApi {
                     dobApproximate ? (String) item.getOrDefault("Date_of_Birth", "") : "",
                     (String) item.getOrDefault("Date_Leaving_Post", ""),
                     (String) item.getOrDefault("Total_Length_Of_Service", ""),
-                    (boolean) item.getOrDefault("Is_this_a_state_nomination", false) ? "" : item.get("Years").toString(),
-                    (boolean) item.getOrDefault("Is_this_a_state_nomination", false) ? item.get("Years").toString() : "",
+                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes")? "" : item.get("Years").toString(),
+                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes") ? item.get("Years").toString() : "",
+                    (String) item.getOrDefault("Nationality",""),
                     ((String) item.getOrDefault("Nationality","")).contains("British") ? "N" : "Y",
                     (String) item.getOrDefault("Short_citation", ""),
                     (String) item.getOrDefault("Long_citation", ""),
@@ -253,8 +255,8 @@ class KissflowApi {
                     addressLines.length > 2 ? addressLines[addressLines.length-2] : "",
                     Objects.equals(item.getOrDefault("Secure_Address", ""), "Yes") ? "Y" : "N",
                     (String) item.getOrDefault("Telephone", ""),
-                    (String) item.getOrDefault("Ethnic_Group", ""),
-                    ((String) item.getOrDefault("Nomination_Type", "")).contains("Public") ? "" : "",
+                    (String) item.getOrDefault("Departmental_shortlist", ""),
+                    ((String) item.getOrDefault("Nomination_Type", "")).contains("Public") ? (String) item.getOrDefault("Nomination_Type", "") : "",
                     (String) item.getOrDefault("Ethnic_Group", ""),
                     (String) item.getOrDefault("Proposed_Committee", ""),
                     (String) item.getOrDefault("Proposed_Committee", ""),
@@ -344,12 +346,10 @@ class KissflowApi {
 
         JSONObject submit = (JSONObject) callJsonEndpoint(httpsURL, body.toJSONString(), "POST", "application/json");
 
-        System.out.println(submit.toJSONString());
-
         return String.format("https://kf-0000580.appspot.com/#/inbox/Provide Input/Sh25328874_8f06_11e7_addd_062ed84aadae/Ac56fe5508_8f07_11e7_addd_062ed84aadae/%s", (String) submit.get("Id"));
     }
 
-    private Object callJsonEndpoint(String httpsURL, String body, String method, String contentType) throws IOException, org.json.simple.parser.ParseException {
+    Object callJsonEndpoint(String httpsURL, String body, String method, String contentType) throws IOException, org.json.simple.parser.ParseException {
         URL myurl = new URL(httpsURL);
         HttpsURLConnection con = (HttpsURLConnection)myurl.openConnection();
         con.setRequestMethod(method);
@@ -371,7 +371,6 @@ class KissflowApi {
         }
 
         System.out.println("Resp Code:"+con .getResponseCode());
-        System.out.println("Resp Message:"+ con .getResponseMessage());
 
         return new JSONParser().parse(new InputStreamReader(con.getInputStream()));
     }

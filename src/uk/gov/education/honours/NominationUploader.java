@@ -58,7 +58,6 @@ public class NominationUploader {
 
         List<Section> res = structurePhrasesIntoSections(allPhrases);
 
-        System.out.println(res.toString());
         List<FileNameAndPath> evidenceFiles = filterToEvidenceFiles(res, fileBucket);
         List<FileNameAndPath> uploadedFiles = new ArrayList<>();
         for (FileNameAndPath fnap : evidenceFiles) {

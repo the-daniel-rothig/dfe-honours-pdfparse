@@ -41,8 +41,6 @@ class FileUploader {
 
         JSONObject parse = (JSONObject) new JSONParser().parse(new InputStreamReader(connection.getInputStream()));
 
-        System.out.println(parse.toJSONString());
-
         return parse.get("cdn_url") + "/nth/0/";
     }
 
