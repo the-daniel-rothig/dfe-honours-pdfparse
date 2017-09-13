@@ -36,9 +36,22 @@ class KissflowApi {
 
         Iterator<Row> rowIterator = sheet.rowIterator();
         rowIterator.next();
+        JSONArray records = (JSONArray) callJsonEndpoint("https://kf-0000580.appspot.com/api/1/Honours/list/p1/99999", null, "GET", null);
+
         while (rowIterator.hasNext()) {
             Row row = rowIterator.next();
             String[] split = row.getCell(7).getStringCellValue().split("/");
+            String id = split[split.length-1];
+
+            Optional recordOrNone = records.stream().filter(x -> Objects.equals(((JSONObject) x).get("Id"), id)).findFirst();
+            if (!recordOrNone.isPresent()) continue;
+            JSONObject record = (JSONObject) recordOrNone.get();
+
+            boolean isProgressNotUpdate =
+                    (   Objects.equals(record.getOrDefault("Directorate_shortlist", ""), "")
+                     && !Objects.equals(row.getCell(1).getStringCellValue(), ""))
+                  ||(   Objects.equals(record.getOrDefault("Departmental_shortlist", ""), "")
+                     && !Objects.equals(row.getCell(0).getStringCellValue(), ""));
 
             Map<String,String> body = new HashMap<>();
 
@@ -51,8 +64,11 @@ class KissflowApi {
 
             String fullbody = body.entrySet().stream().map(x -> String.format("%s=%s", x.getKey(), x.getValue())).collect(Collectors.joining("&"));
 
-            String id = split[split.length-1];
-            callJsonEndpoint("https://kf-0000580.appspot.com/api/1/Honours/" + id + "/update", fullbody, "PUT", "application/x-www-form-urlencoded");
+            if (isProgressNotUpdate) {
+                callJsonEndpoint("https://kf-0000580.appspot.com/api/1/Honours/" + id + "/done", fullbody, "POST", "application/x-www-form-urlencoded");
+            } else {
+                callJsonEndpoint("https://kf-0000580.appspot.com/api/1/Honours/" + id + "/update", fullbody, "PUT", "application/x-www-form-urlencoded");
+            }
         }
     }
 
@@ -117,8 +133,8 @@ class KissflowApi {
         for(Object o : results) {
             JSONObject item = (JSONObject) o;
 
-            if (filterToDirectorate && !Objects.equals(directorate, item.getOrDefault("Directorate",""))) continue;
-            if (filterToRound && !Objects.equals(directorate, item.getOrDefault("Round",""))) continue;
+            if (filterToDirectorate && (!Objects.equals(directorate, item.getOrDefault("Directorate","")) || !item.containsKey("Assigned To-Directorate Shortlist"))) continue;
+            if (filterToRound && ((Double) item.getOrDefault("Directorate_shortlist", 0.0) < 0.5 || !Objects.equals(directorate, item.getOrDefault("Round","")) || !item.containsKey("Assigned To-Department Shortlist"))) continue;
 
             XSSFRow thisRow = appendRow(sheet, currentRow, Arrays.asList(
                     (String) item.getOrDefault("Departmental_shortlist", ""),
@@ -215,7 +231,7 @@ class KissflowApi {
         for (Object o : results) {
             JSONObject item = (JSONObject) o;
 
-            if(filterToRound && !Objects.equals(round, item.getOrDefault("Round", ""))) {
+            if(filterToRound && !Objects.equals(round, item.getOrDefault("Round", "")) && (Objects.equals(item.getOrDefault("Departmental_shortlist", ""),"") || item.containsKey("Assigned To"))) {
                 continue;
             }
 
