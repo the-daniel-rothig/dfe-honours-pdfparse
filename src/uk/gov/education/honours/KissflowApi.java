@@ -271,7 +271,7 @@ class KissflowApi {
                     addressLines.length > 2 ? addressLines[addressLines.length-2] : "",
                     Objects.equals(item.getOrDefault("Secure_Address", ""), "Yes") ? "Y" : "N",
                     (String) item.getOrDefault("Telephone", ""),
-                    (String) item.getOrDefault("Departmental_shortlist", ""),
+                    Integer.valueOf(((Double) item.getOrDefault("Departmental_shortlist", 0)).intValue()).toString(),
                     ((String) item.getOrDefault("Nomination_Type", "")).contains("Public") ? (String) item.getOrDefault("Nomination_Type", "") : "",
                     (String) item.getOrDefault("Ethnic_Group", ""),
                     (String) item.getOrDefault("Proposed_Committee", ""),
