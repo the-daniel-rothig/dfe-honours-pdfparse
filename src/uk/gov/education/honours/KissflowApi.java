@@ -134,7 +134,7 @@ class KissflowApi {
             JSONObject item = (JSONObject) o;
 
             if (filterToDirectorate && (!Objects.equals(directorate, item.getOrDefault("Directorate","")) || !item.containsKey("Assigned To-Directorate Shortlist"))) continue;
-            if (filterToRound && ((Double) item.getOrDefault("Directorate_shortlist", 0.0) < 0.5 || !Objects.equals(directorate, item.getOrDefault("Round","")) || !item.containsKey("Assigned To-Department Shortlist"))) continue;
+            if (filterToRound && ((Double) item.getOrDefault("Directorate_shortlist", 0.0) < 0.5 || !Objects.equals(round, item.getOrDefault("Round","")) || !item.containsKey("Assigned To-Department Shortlist"))) continue;
 
             XSSFRow thisRow = appendRow(sheet, currentRow, Arrays.asList(
                     (String) item.getOrDefault("Departmental_shortlist", ""),
