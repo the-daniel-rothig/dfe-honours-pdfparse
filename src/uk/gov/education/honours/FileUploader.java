@@ -17,8 +17,14 @@ class FileUploader {
         this.fileApiKey = fileApiKey;
     }
 
+
     String sendFile(String pathToFile, String filename) throws Exception {
-        String fileId = uploadFile(pathToFile, filename);
+        File file = new File(pathToFile);
+        return sendFile(new FileInputStream(file), Files.probeContentType(file.toPath()), filename);
+    }
+
+    String sendFile(InputStream fileStream, String contentType, String filename) throws Exception {
+        String fileId = uploadFile(fileStream, contentType, filename);
         return getFileUrl(fileId);
     }
 
@@ -44,10 +50,9 @@ class FileUploader {
         return parse.get("cdn_url") + "/nth/0/";
     }
 
-    private String uploadFile(String pathToFile, String filename) throws IOException, ParseException {
+    private String uploadFile(InputStream inputStream, String contentType, String filename) throws IOException, ParseException {
         // Task attachments endpoint
         String url = "https://upload.kissflow.com/base/?jsonerrors=1";
-        File theFile = new File(pathToFile);
 
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 
@@ -76,11 +81,10 @@ class FileUploader {
 
             writer.append("--").append(boundary).append(LINE_FEED);
             writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"").append(filename).append("\"").append(LINE_FEED);
-            writer.append("Content-Type: ").append(Files.probeContentType(theFile.toPath())).append(LINE_FEED);
+            writer.append("Content-Type: ").append(contentType).append(LINE_FEED);
             writer.append(LINE_FEED);
             writer.flush();
 
-            FileInputStream inputStream = new FileInputStream(theFile);
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {

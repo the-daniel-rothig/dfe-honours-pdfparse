@@ -6,6 +6,7 @@ import org.apache.poi.xssf.usermodel.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import sun.java2d.pipe.SpanShapeRenderer;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.awt.Color;
@@ -237,7 +238,7 @@ class KissflowApi {
 
             Matcher year = Pattern.compile("[0-9]{4}").matcher((String) item.getOrDefault("Round", ""));
             boolean dobApproximate = Objects.equals(item.getOrDefault("Is_Date_of_Birth_approximate", ""), "Yes");
-            String[] addressLines = ((String) item.getOrDefault("Address", "")).split("\n");
+            String[] addressLines = ((String) item.getOrDefault("Street", "")).split("\n");
 
             appendRow(sheet, currentRow++, Arrays.asList(
                     "DfE",
@@ -255,20 +256,20 @@ class KissflowApi {
                     dobApproximate ? (String) item.getOrDefault("Date_of_Birth", "") : "",
                     (String) item.getOrDefault("Date_Leaving_Post", ""),
                     (String) item.getOrDefault("Total_Length_Of_Service", ""),
-                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes")? "" : item.get("Years").toString(),
-                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes") ? item.get("Years").toString() : "",
+                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes")? "" : doubleAsIntString(item, "Years"),
+                    Objects.equals(item.getOrDefault("Is_this_a_state_nomination", ""), "Yes") ? doubleAsIntString(item, "Years") : "",
                     (String) item.getOrDefault("Nationality",""),
                     ((String) item.getOrDefault("Nationality","")).contains("British") ? "N" : "Y",
                     (String) item.getOrDefault("Short_citation", ""),
                     (String) item.getOrDefault("Long_citation", ""),
                     (String) item.getOrDefault("Long_citation", ""),
                     addressLines[0],
-                    addressLines.length > 5 ? addressLines[1] : "",
-                    addressLines.length > 6 ? addressLines[2] : "",
-                    addressLines.length > 4 ? addressLines[addressLines.length-4] : "",
-                    addressLines.length > 3 ? addressLines[addressLines.length-3] : "",
-                    addressLines.length > 1 ? addressLines[addressLines.length-1] : "",
-                    addressLines.length > 2 ? addressLines[addressLines.length-2] : "",
+                    addressLines.length > 1 ? addressLines[1] : "",
+                    addressLines.length > 3 ? addressLines[2] : "",
+                    (String) item.getOrDefault("Town", ""),
+                    (String) item.getOrDefault("County", ""),
+                    (String) item.getOrDefault("Country", ""),
+                    (String) item.getOrDefault("Postcode", ""),
                     Objects.equals(item.getOrDefault("Secure_Address", ""), "Yes") ? "Y" : "N",
                     (String) item.getOrDefault("Telephone", ""),
                     Integer.valueOf(((Double) item.getOrDefault("Departmental_shortlist", 0)).intValue()).toString(),
@@ -286,6 +287,10 @@ class KissflowApi {
         }
 
         return wb;
+    }
+
+    private String doubleAsIntString(JSONObject item, String fieldValue) {
+        return Integer.valueOf(((Double) item.getOrDefault(fieldValue, 0)).intValue()).toString();
     }
 
     private static XSSFRow appendRow(XSSFSheet sheet, int currentRow, List<String> strings) {
@@ -318,7 +323,11 @@ class KissflowApi {
         body.put("First_Name", d.getProperty(1, "Forename"));
         body.put("Last_Name", d.getProperty(1, "Surname"));
         body.put("Telephone", d.getProperty(1, "Telephone number"));
-        body.put("Address", Stream.of("Street", "Town or City", "County", "Postcode", "Country").map(x -> d.getProperty(1, x)).filter(x -> x != null).collect(Collectors.joining("\n")));
+        body.put("Street", d.getProperty(1, "Street"));
+        body.put("Town", d.getProperty(1, "Town or City"));
+        body.put("County", d.getProperty(1, "County"));
+        body.put("Country", d.getProperty(1, "Country"));
+        body.put("Postcode", d.getProperty(1, "Postcode"));
         body.put("Date_of_Birth", d.getSimpleAnswer(1, "What is your nominee's date of birth?"));
         body.put("Age", Double.valueOf((new Date().getTime() - d.getSimpleAnswerAsDate(1, "What is your nominee's date of birth?").getTime()) / (1000*3600*24*365.24) + 1).intValue());
         body.put("Disability", Objects.equals(d.getProperty(1, "Equality monitoring", "Disability"),"Yes") ? "Yes" : "No");
@@ -337,10 +346,12 @@ class KissflowApi {
             Matcher fromPattern = Pattern.compile("([A-Za-z]+ [0-9]{4}).*").matcher(s);
             SimpleDateFormat sdf = new SimpleDateFormat("MMM yyyy");
 
+            SimpleDateFormat targetSdf = new SimpleDateFormat("dd/MM/yyyy");
+
             if (fromToPattern.find()) {
                 int years = Double.valueOf(Math.ceil((sdf.parse(fromToPattern.group(2)).getTime() - sdf.parse(fromToPattern.group(1)).getTime()) / 3600000 / 24 / 365.25)).intValue();
                 body.put("Years", years);
-                body.put("Date_Leaving_Post", fromToPattern.group(2));
+                body.put("Date_Leaving_Post", targetSdf.format(sdf.parse(fromToPattern.group(2))));
             }
             else if (fromPattern.find()) {
                 int years = Double.valueOf(Math.ceil((new Date().getTime() - sdf.parse(fromPattern.group(1)).getTime())/3600000/24/365.25)).intValue();
